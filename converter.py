@@ -30,9 +30,17 @@ class Converter:
               destPath.touch()
               destPath.write_text(text)
 
-converters = []
+def fallback(file, path):
+  for glob in globs:
+    if path.match(glob):
+      return
+  return file
+
+converters = [Converter(["**/*"], fallback)]
+globs = []
 def load():
   for file in pathlib.Path("converters").glob("*.py"):
     print("Loading converter {}".format(file.stem))
     c = importlib.import_module("converters.{}".format(file.stem))
+    globs.extend(c.globs)
     converters.append(Converter(c.globs, c.convert))
