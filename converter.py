@@ -9,30 +9,31 @@ class Converter:
   def go(self, source, dest):
     for glob in self.globs:
       for path in source.glob(glob):
+        contents = None
         if path.is_file():
           try:
             contents = path.read_text()
           except UnicodeDecodeError:
             contents = path.read_bytes()
-          res = self.process(contents, path.relative_to(source))
-          if isinstance(res, str) or isinstance(res, bytes):
-            destPath = dest / path.relative_to(source)
+        res = self.process(contents, path.relative_to(source), path)
+        if isinstance(res, str) or isinstance(res, bytes):
+          destPath = dest / path.relative_to(source)
+          destPath.parent.mkdir(parents=True, exist_ok=True)
+          destPath.touch()
+          if isinstance(res, str):
+            destPath.write_text(res)
+          else:
+            destPath.write_bytes(res)
+        elif isinstance(res, dict):
+          for destPath, text in res.items():
+            destPath = dest / destPath
             destPath.parent.mkdir(parents=True, exist_ok=True)
             destPath.touch()
-            if isinstance(res, str):
-              destPath.write_text(res)
-            else:
-              destPath.write_bytes(res)
-          elif isinstance(res, dict):
-            for destPath, text in res.items():
-              destPath = dest / destPath
-              destPath.parent.mkdir(parents=True, exist_ok=True)
-              destPath.touch()
-              destPath.write_text(text)
+            destPath.write_text(text)
 
-def fallback(file, path):
+def fallback(file, path, _):
   for glob in globs:
-    if path.match(glob):
+    if path.match(glob) or any([p.match(glob) for p in path.parents]):
       return
   return file
 

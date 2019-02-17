@@ -72,7 +72,7 @@ def process(self, text):
     return _infer(text)
   return res
 
-def convert(text, path):
+def convert(text, path, _):
   dest = path.with_suffix(".json")
   data = json.dumps(process(text))
   return {dest: data}

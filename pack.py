@@ -44,7 +44,8 @@ def generate(worldPath, devPath, name, description, packType):
       "name": name,
       "description": description,
       "uuid": str(uuid.uuid4()),
-      "version": [ 0, 0, 1 ]
+      "version": [ 0, 0, 1 ],
+      "min_engine_version": [1, 9, 0]
     },
     "modules": [
       {
