@@ -23,7 +23,7 @@ killFmt = """teleport @e[type=silverfish] ~ -30 ~
 kill @e[type=silverfish]"""
 
 
-def convert(_, root, realRoot):
+def folderConvert(realRoot, root):
   i = 1
   name = root.name
   root = "functions" / root
@@ -65,4 +65,4 @@ def convert(_, root, realRoot):
   return res
 
 
-globs = [ "quests/*/" ]
+patterns = [ "quests/*/" ]

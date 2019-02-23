@@ -72,9 +72,9 @@ def process(self, text):
     return _infer(text)
   return res
 
-def convert(text, path, _):
+def convert(text, path):
   dest = path.with_suffix(".json")
   data = json.dumps(process(text))
   return {dest: data}
 
-globs = ["entities/*.mcj", "loot_tables/*.mcj"]
+patterns = ["entities/*.mcj", "loot_tables/*.mcj"]
