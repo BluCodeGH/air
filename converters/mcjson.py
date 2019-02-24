@@ -1,6 +1,6 @@
 import json
 
-def _infer(self, text):
+def _infer(text):
   if text[0] == '"' and text[-1] == '"':
     return text[1:-1]
   if text[0] == '[' and text[-1] == ']':
@@ -28,13 +28,15 @@ def _infer(self, text):
     pass
   return text
 
-def process(self, text):
+def process(text):
   res = {}
   wip = ""
   wipKey = None
 
   def next(res, wipKey, wip):
     if wip == "":
+      if wipKey is not None:
+        res[wipKey] = {}
       return
     if wipKey is None:
       raise SyntaxError("Cannot have indent without heading.")
@@ -46,6 +48,8 @@ def process(self, text):
       res[wipKey] = process(wip)
 
   for line in text.splitlines():
+    if line.strip() == "" or line.strip()[0] == "#":
+      continue
     if line.startswith("  "):
       if wip:
         wip += "\n"
@@ -66,15 +70,14 @@ def process(self, text):
       wipKey = line
       wip = ""
   
-  if wip != "":
-    next(res, wipKey, wip)
+  next(res, wipKey, wip)
   if res == {} and text:
     return _infer(text)
   return res
 
 def convert(text, path):
   dest = path.with_suffix(".json")
-  data = json.dumps(process(text))
+  data = json.dumps(process(text), indent=2)
   return {dest: data}
 
-patterns = ["entities/*.mcj", "loot_tables/*.mcj"]
+patterns = [ "loot_tables/*.mcj" ]
