@@ -1,6 +1,7 @@
 import json
 
 def _infer(text):
+  text = text.strip()
   if text[0] == '"' and text[-1] == '"':
     return text[1:-1]
   if text[0] == '[' and text[-1] == ']':
@@ -11,6 +12,8 @@ def _infer(text):
         res.append(_infer(wip.strip()))
       else:
         wip += c
+    if wip.strip() != "":
+      res.append(_infer(wip.strip()))
     return res
   if text[0] == '{' and text[-1] == '}':
     res = {}
@@ -22,6 +25,10 @@ def _infer(text):
       else:
         wip += c
     return res
+  if text == "false":
+    return False
+  if text == "true":
+    return True
   try: 
     return float(text)
   except ValueError:

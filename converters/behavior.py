@@ -13,6 +13,7 @@ def convert(text, path):
         "is_experimental": "false"
       }
     }}
+  final["minecraft:entity"]["components"] = {"minecraft:" + k:v for k, v in data.pop("components").items()}
   final["minecraft:entity"].update(data)
   return {dest: json.dumps(final, indent=2)}
 
