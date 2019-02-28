@@ -22,11 +22,13 @@ class Air(cmd.Cmd):
       print("Error: Could not find a world called {}".format(line))
       return
     if len(results) == 1:
+      (self.dev / line).mkdir(parents=True, exist_ok=True)
       self.world = World(results[0], self.dev / line)
     else:
       print("Warning: There are multiple worlds named {}".format(line))
       folder = input("Choose a folder out of {}: ".format(", ".join([r.name for r in results])))
       if folder in [r.name for r in results]:
+        (self.dev / line).mkdir(parents=True, exist_ok=True)
         self.world = World([r for r in results if r.name == folder][0], self.dev / line)
       else:
         print("Error: Invalid folder entered: {}".format(folder))

@@ -67,7 +67,6 @@ def fallback(file, path):
   for pattern in patterns:
     if match(pattern, path, False) or any([match(pattern, p, True) for p in path.parents]):
       return
-  print("Falling back on", path)
   return file
 
 converters = [Converter([".*"], fallback)]
