@@ -28,9 +28,6 @@ execute @e[{0},scores={{dialogueState={4}}}] ~ ~ ~ execute @e[tag=questState] ~ 
 noDialogueMain = """function quests/{0}/{1}/tick
 """
 
-overallKillInteract = """teleport @e[type=silverfish] ~ -30 ~
-kill @e[type=silverfish]"""
-
 questReset = """scoreboard players reset @s *
 """
 questStageReset = """tag @s remove quest_{}_{}
@@ -64,7 +61,7 @@ def folderConvert(realRoot, root):
           res[path / "dialogue.mcfunction"] += dialogueStageCommand.format(lineNum, line[1:].strip())
         elif line.strip() != "":
           time, line = line.split(" ", 1)
-          time = int(20 * time)
+          time = int(float(time) * 20)
           res[path / "dialogue.mcfunction"] += dialogueStageCommand.format(lineNum, dialogueStageTellraw.format(line))
           res[path / "dialogue.mcfunction"] += dialogueStageTiming.format(lineNum, time)
           lineNum += 1
@@ -75,14 +72,13 @@ def folderConvert(realRoot, root):
     else:
       res[path/ "main.mcfunction"] = noDialogueMain.format(name, i)
     if (realPath / "enter.mcfunction").is_file():
-      res[path / "enter.mcfunction"] += (realPath / "enter.mcfunction").read_text()
+      res[path / "enter.mcfunction"] = (realPath / "enter.mcfunction").read_text() + "\n" + res[path / "enter.mcfunction"]
     if (realPath / "tick.mcfunction").is_file():
       res[path / "tick.mcfunction"] += (realPath / "tick.mcfunction").read_text()
     if (realPath / "exit.mcfunction").is_file():
       res[path / "exit.mcfunction"] = (realPath / "exit.mcfunction").read_text()
     i += 1
-  res[root / "main.mcfunction"] += overallKillInteract
   return res
 
 
-patterns = [ "quests/*/" ]
+patterns = ["quests/*/"]

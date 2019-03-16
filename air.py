@@ -1,90 +1,65 @@
-import importlib
 import pathlib
-import cmd
-
+import readline
+from colorama import init, Fore, Style
 from world import World
 import converter
-
-class Air(cmd.Cmd):
-  def __init__(self, config):
-    self.prompt = "> "
-    self.config = config
-    self.mcw = pathlib.Path(config["main"]["minecraftWorlds"][0]).expanduser().resolve()
-    self.dev = pathlib.Path(config["main"]["dev"][0]).expanduser().resolve()
-    self.world = None
-    converter.load()
-    super().__init__()
-
-
-  def do_load(self, line):
-    results = [d for d in self.mcw.iterdir() if d.is_dir() and (d / "levelname.txt").read_text() == line]
-    if len(results) == 0:
-      print("Error: Could not find a world called {}".format(line))
-      return
-    if len(results) == 1:
-      (self.dev / line).mkdir(parents=True, exist_ok=True)
-      self.world = World(results[0], self.dev / line)
-    else:
-      print("Warning: There are multiple worlds named {}".format(line))
-      folder = input("Choose a folder out of {}: ".format(", ".join([r.name for r in results])))
-      if folder in [r.name for r in results]:
-        (self.dev / line).mkdir(parents=True, exist_ok=True)
-        self.world = World([r for r in results if r.name == folder][0], self.dev / line)
-      else:
-        print("Error: Invalid folder entered: {}".format(folder))
-        return
-    self.prompt = self.world.name + "> "
-
-  def complete_load(self, text, line, start, end):
-    if not text:
-      return [(d / "levelname.txt").read_text() for d in self.mcw.iterdir() if d.is_dir()]
-    return [(d / "levelname.txt").read_text() for d in self.mcw.iterdir() if d.is_dir() and (d / "levelname.txt").read_text().startswith(text)]
-
-
-  def do_pack(self, line):
-    if line.startswith("new "):
-      line = line[4:]
-      if line.startswith("rp "):
-        i = 0
-      elif line.startswith("bp "):
-        i = 1
-      else:
-        print("Error, unknown pack type.")
-        return
-      line = line[3:]
-      name, desc = line.split(" ", 1)
-      self.world.generate(name, desc, i)
-
-  def emptyline(self):
-    self.world.go(converter.converters)
-    print("Done.")
-
-  def do_EOF(self, line):
-    print("Exiting")
-    return True
+init(autoreset=True)
+converter.load()
 
 def readConfig(file):
   with open(file) as iF:
     contents = iF.read()
   config = {}
-  section = None
   for line in contents.splitlines():
     line = line.strip()
     if line == "" or line[0] in "#;":
       continue
-    if line.startswith("["):
-      section = line[1:-1]
-      config[section] = {}
+    k, v = line.split("=", 1)
+    k, v = k.strip(), v.strip()
+    if k in config:
+      config[k].append(v)
     else:
-      k, v = line.split("=", 1)
-      k, v = k.strip(), v.strip()
-      if k in config[section]:
-        config[section][k].append(v)
-      else:
-        config[section][k] = [v.strip()]
+      config[k] = [v]
   return config
 
-if __name__ == "__main__":
-  config = readConfig("config.ini")
+configData = readConfig("config.txt")
+mcw = pathlib.Path(configData["minecraftWorlds"][0]).expanduser().resolve()
+dev = pathlib.Path(configData["dev"][0]).expanduser().resolve()
 
-  Air(config).cmdloop()
+worlds = [((d / "levelname.txt").read_text(), d) for d in mcw.iterdir() if d.is_dir()]
+print(Fore.GREEN + "Found worlds: " + Style.RESET_ALL + ", ".join([w for w, _ in worlds]))
+
+readline.parse_and_bind("tab: complete")
+
+world = None
+while world is None:
+  readline.set_completer(lambda text, i: [world for world, _ in worlds if world.startswith(text)][i])
+  name = input(Fore.GREEN + "?" + Style.RESET_ALL + " Enter world to load: ")
+  results = [(world, d) for world, d in worlds if world == name]
+  if not results:
+    results = [(world, d) for world, d in worlds if d.name == name]
+    if not results:
+      print(Fore.RED + "  Invalid world name entered.")
+    else:
+      world = results[0]
+      print(Fore.BLUE + "  Matched folder, loading " + world[0])
+  elif len(results) == 1:
+    print(Fore.BLUE + "  Loading " + results[0][0])
+    world = results[0]
+  else:
+    print(Fore.RED + "  Multiple worlds called " + name)
+    print(Fore.GREEN + "  Folder names: " + Style.RESET_ALL + ", ".join([d.name for _, d in results]))
+    readline.set_completer(lambda text, i: [d.name for _, d in results if d.name.startswith(text)][i])
+    name = input(Fore.GREEN + "  ?" + Style.RESET_ALL + " Enter folder name: ")
+    if name in [d.name for _, d in results]:
+      world = results[0][0], [d for _, d in results if d.name == name][0]
+      print(Fore.BLUE + "    Loading " + world[0])
+    else:
+      print(Fore.RED + "    Invalid folder name entered.")
+world = World(world[1], dev)
+try:
+  while True:
+    input("Ready.")
+    world.go(converter.converters)
+except KeyboardInterrupt:
+  print(Fore.BLUE + "\nExiting.")

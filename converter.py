@@ -24,7 +24,7 @@ class Converter:
           except UnicodeDecodeError:
             contents = path.read_bytes()
           res = self.process(contents, path.relative_to(source))
-          if isinstance(res, str) or isinstance(res, bytes):
+          if isinstance(res, (bytes, str)):
             destPath = dest / path.relative_to(source)
             destPath.parent.mkdir(parents=True, exist_ok=True)
             destPath.touch()
@@ -64,18 +64,18 @@ class FolderConverter(Converter):
             destPath.write_text(text)
 
 def fallback(file, path):
-  for pattern in patterns:
+  for pattern in usedPatterns:
     if match(pattern, path, False) or any([match(pattern, p, True) for p in path.parents]):
-      return
+      return None
   return file
 
 converters = [Converter([".*"], fallback)]
-patterns = []
+usedPatterns = []
 def load():
   for file in pathlib.Path("converters").glob("*.py"):
-    print("Loading converter {}".format(file.stem))
+    #print("Loading converter {}".format(file.stem))
     c = importlib.import_module("converters.{}".format(file.stem))
-    patterns.extend(c.patterns)
+    usedPatterns.extend(c.patterns)
     if hasattr(c, "convert"):
       converters.append(Converter(c.patterns, c.convert))
     else:

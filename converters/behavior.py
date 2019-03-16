@@ -1,5 +1,5 @@
-import converters.mcjson as mcjson
 import json
+import converters.mcjson as mcjson
 
 def convert(text, path):
   dest = path.with_suffix(".json")
@@ -17,4 +17,4 @@ def convert(text, path):
   final["minecraft:entity"].update(data)
   return {dest: json.dumps(final, indent=2)}
 
-patterns = [ "entities/*.mcj" ]
+patterns = ["entities/*.mcj"]

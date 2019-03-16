@@ -29,7 +29,7 @@ def _infer(text):
     return False
   if text == "true":
     return True
-  try: 
+  try:
     return float(text)
   except ValueError:
     pass
@@ -76,7 +76,7 @@ def process(text):
       next(res, wipKey, wip)
       wipKey = line
       wip = ""
-  
+
   next(res, wipKey, wip)
   if res == {} and text:
     return _infer(text)
@@ -87,4 +87,4 @@ def convert(text, path):
   data = json.dumps(process(text), indent=2)
   return {dest: data}
 
-patterns = [ "loot_tables/*.mcj" ]
+patterns = ["loot_tables/*.mcj"]
