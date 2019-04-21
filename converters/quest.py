@@ -21,6 +21,7 @@ dialogueStageCommand = """execute @s[scores={{dialogueState={0},dialogueTime=0}}
 dialogueStageTiming = """scoreboard players set @s[scores={{dialogueState={0},dialogueTime=0}}] dialogueTime {1}
 """ # number, duration
 dialogueStageTellraw = """tellraw @a {{"rawtext":[{{"text":"{0}"}}]}}"""
+dialogueStageDing = """execute @a ~ ~ ~ playsound random.orb @a ~ ~ ~ 0.5"""
 
 dialogueMain = """execute @e[{0},scores={{dialogueState=..{1}}}] ~ ~ ~ function quests/{2}/{3}/dialogue
 execute @e[{0},scores={{dialogueState={4}}}] ~ ~ ~ execute @e[tag=questState] ~ ~ ~ function quests/{2}/{3}/tick
@@ -47,8 +48,8 @@ def folderConvert(realRoot, root):
       break
     res[root / "main.mcfunction"] += questStage.format(name, i, i + 1)
     res[root / "reset.mcfunction"] += questStageReset.format(name, i)
-    res[path / "enter.mcfunction"] = ""
-    res[path / "tick.mcfunction"] = ""
+    res[path / "enter.mcfunction"] = "\n"
+    res[path / "tick.mcfunction"] = "\n"
     dialogue = realPath / "dialogue.txt"
     if dialogue.is_file():
       dialogue = dialogue.read_text()
@@ -60,9 +61,25 @@ def folderConvert(realRoot, root):
         if line.startswith("!"):
           res[path / "dialogue.mcfunction"] += dialogueStageCommand.format(lineNum, line[1:].strip())
         elif line.strip() != "":
-          time, line = line.split(" ", 1)
+          try:
+            time, line = line.split(" ", 1)
+            if "student" in selector:
+              line = "§dStudent:§r " + line
+            if "teacher" in selector:
+              line = "§dTeacher:§r " + line
+            if "librarian" in selector:
+              line = "§dLibrarian:§r " + line
+            if "chef" in selector:
+              line = "§dChef:§r " + line
+            if "groundskeeper" in selector:
+              line = "§dGroundskeeper:§r " + line
+            if "caretaker" in selector:
+              line = "§dCaretaker:§r " + line
+            res[path / "dialogue.mcfunction"] += dialogueStageCommand.format(lineNum, dialogueStageTellraw.format(line))
+            res[path / "dialogue.mcfunction"] += dialogueStageCommand.format(lineNum, dialogueStageDing)
+          except ValueError:
+            time = line.strip()
           time = int(float(time) * 20)
-          res[path / "dialogue.mcfunction"] += dialogueStageCommand.format(lineNum, dialogueStageTellraw.format(line))
           res[path / "dialogue.mcfunction"] += dialogueStageTiming.format(lineNum, time)
           lineNum += 1
       res[path / "main.mcfunction"] = dialogueMain.format(selector, lineNum - 1, name, i, lineNum)

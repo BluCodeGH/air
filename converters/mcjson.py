@@ -7,9 +7,13 @@ def _infer(text):
   if text[0] == '[' and text[-1] == ']':
     res = []
     wip = ""
-    for c in text[1:-1]:
-      if c == ",":
+    iq = False
+    for c in text[1:-1].strip():
+      if c == '"':
+        iq = not iq
+      elif c == " " and not iq:
         res.append(_infer(wip.strip()))
+        wip = ""
       else:
         wip += c
     if wip.strip() != "":
@@ -22,8 +26,12 @@ def _infer(text):
       if c == ",":
         k, v = wip.strip().split(" ", 1)
         res[k] = _infer(v)
+        wip = ""
       else:
         wip += c
+    if wip.strip() != "":
+      k, v = wip.strip().split(" ", 1)
+      res[k] = _infer(v)
     return res
   if text == "false":
     return False
@@ -40,19 +48,33 @@ def process(text):
   wip = ""
   wipKey = None
 
+  """
+  wipKey  wip
+  None    None: Start of a file
+  *       None: empty tag {}
+  None    *: in a list or random indent
+  *       *: k, v
+  """
   def next(res, wipKey, wip):
     if wip == "":
       if wipKey is not None:
         res[wipKey] = {}
       return
     if wipKey is None:
-      raise SyntaxError("Cannot have indent without heading.")
-    if wipKey in res and isinstance(res[wipKey], list):
-      res[wipKey].append(process(wip))
+      if None in res:
+        processed = process(wip)
+        if processed == {wip: {}}:
+          res[None].append(_infer(wip))
+        else:
+          res[None].append(processed)
+      else:
+        raise SyntaxError("Cannot have indent without heading.")
     elif wipKey in res:
-      raise SyntaxError("Must start list with -")
+      raise SyntaxError("Duplicate keys {}".format(wipKey))
     else:
       res[wipKey] = process(wip)
+      if None in res[wipKey]:
+        res[wipKey] = res[wipKey][None]
 
   for line in text.splitlines():
     if line.strip() == "" or line.strip()[0] == "#":
@@ -63,13 +85,17 @@ def process(text):
       wip += line[2:]
     elif line.startswith("- "):
       next(res, wipKey, wip)
+      if res != {} and list(res.keys()) != [None]:
+        raise SyntaxError("List must be indented from key in {}".format(text))
       wip = ""
-      if wipKey not in res:
-        res[wipKey] = []
+      wipKey = None
+      if None not in res:
+        res[None] = []
       wip = line[2:]
-    elif " " in line:
+    elif " " in line and not (line[0] == '"' and line[-1] == '"'):
       next(res, wipKey, wip)
       wip = ""
+      wipKey = None
       k, v = line.split(" ", 1)
       res[k] = _infer(v)
     else:
@@ -87,4 +113,4 @@ def convert(text, path):
   data = json.dumps(process(text), indent=2)
   return {dest: data}
 
-patterns = ["loot_tables/*.mcj"]
+patterns = ["loot_tables/*.mcj", "animations/*.mcj", "animation_controllers/*.mcj", "entity/*.mcj", "render_controllers/*.mcj"]

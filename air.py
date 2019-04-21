@@ -3,8 +3,10 @@ import readline
 from colorama import init, Fore, Style
 from world import World
 import converter
+import plugin
 init(autoreset=True)
 converter.load()
+plugin.load()
 
 def readConfig(file):
   with open(file) as iF:
@@ -57,9 +59,18 @@ while world is None:
     else:
       print(Fore.RED + "    Invalid folder name entered.")
 world = World(world[1], dev)
+world.go(converter.converters)
 try:
   while True:
-    input("Ready.")
-    world.go(converter.converters)
+    cmd = input("Ready: ")
+    if cmd == "":
+      world.go(converter.converters)
+    else:
+      #try:
+        plugin.parse(world, cmd)
+      #except Exception as e:
+      #  print(Fore.RED + "! " + Style.RESET_ALL + str(e))
 except KeyboardInterrupt:
+  print(Fore.BLUE + "\nExiting.")
+except EOFError:
   print(Fore.BLUE + "\nExiting.")
