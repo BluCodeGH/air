@@ -1,7 +1,7 @@
 import json
 import pathlib
 import re
-#from plugin import command
+from plugin import command
 
 class Options(list):
   def __repr__(self):
@@ -153,22 +153,24 @@ def analyzeFile(path, selectors=None):
     data.pop("format_version")
   return pprint(clean(types(data)))
 
-#@command
+@command
 def bpschema(_, path):
   path = pathlib.Path(path).expanduser()
   if not path.exists() or not path.is_dir():
     raise FileNotFoundError("Invalid path {}".format(path))
+  (path / "schema").mkdir(exist_ok=True)
   (path / "schema/components.txt").write_text(analyze(path / "entities", ["minecraft:entity", "components"]))
   (path / "schema/loot_tables.txt").write_text(analyze(path / "loot_tables"))
   (path / "schema/spawn_rules.txt").write_text(analyze(path / "spawn_rules"))
   (path / "schema/trades.txt").write_text(analyze(path / "trading"))
-  (path / "schema/items.txt").write_text(analyzeFile(path / "items.json"))
+  (path / "schema/items.txt").write_text(analyze(path / "items"))
 
-#@command
+@command
 def rpschema(_, path):
   path = pathlib.Path(path).expanduser()
   if not path.exists() or not path.is_dir():
     raise FileNotFoundError("Invalid path {}".format(path))
+  (path / "schema").mkdir(exist_ok=True)
   (path / "schema/animation_controllers.txt").write_text(analyze(path / "animation_controllers"))
   (path / "schema/animations.txt").write_text(analyze(path / "animations"))
   (path / "schema/entity.txt").write_text(analyze(path / "entity"))
@@ -176,6 +178,6 @@ def rpschema(_, path):
   (path / "schema/render_controllers.txt").write_text(analyze(path / "render_controllers"))
   (path / "schema/biomes.txt").write_text(analyzeFile(path / "biomes_client.json"))
   (path / "schema/blocks.txt").write_text(analyzeFile(path / "blocks.json"))
-  (path / "schema/items_client.txt").write_text(analyzeFile(path / "items_client.json"))
+  (path / "schema/items.txt").write_text(analyze(path / "items"))
   (path / "schema/items_offsets.txt").write_text(analyzeFile(path / "items_offsets_client.json"))
   (path / "schema/sounds.txt").write_text(analyzeFile(path / "sounds.json"))

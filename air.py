@@ -1,6 +1,8 @@
 import pathlib
 import readline
 from colorama import init, Fore, Style
+from watchdog.observers import Observer
+from watchdog.events import FileSystemEventHandler
 from world import World
 import converter
 import plugin
@@ -60,17 +62,29 @@ while world is None:
       print(Fore.RED + "    Invalid folder name entered.")
 world = World(world[1], dev)
 world.go(converter.converters)
+
+class UpdateHandler(FileSystemEventHandler):
+  @staticmethod
+  def on_any_event(event):
+    if event.is_directory:
+      return
+    world.go(converter.converters)
+observer = Observer()
+observer.schedule(UpdateHandler(), str(world.devPath), recursive=True)
+observer.start()
+
 try:
   while True:
     cmd = input("Ready: ")
-    if cmd == "":
-      world.go(converter.converters)
-    else:
-      #try:
-        plugin.parse(world, cmd)
-      #except Exception as e:
-      #  print(Fore.RED + "! " + Style.RESET_ALL + str(e))
+    if cmd.strip() == "":
+      continue
+    try:
+      plugin.parse(world, cmd)
+    except Exception as e:
+      print(Fore.RED + "! " + Style.RESET_ALL + str(e))
 except KeyboardInterrupt:
   print(Fore.BLUE + "\nExiting.")
 except EOFError:
   print(Fore.BLUE + "\nExiting.")
+observer.stop()
+observer.join()

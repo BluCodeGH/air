@@ -22,6 +22,7 @@ class World:
       self.create()
 
   def create(self):
+    print("Setting up " + self.name)
     self.devPath.mkdir(parents=True)
     self.createPack(self.name + " Resources", self.packTypes[0])
     self.createPack(self.name + " Behaviors", self.packTypes[1])
@@ -51,7 +52,10 @@ class World:
     (path / "manifest.json").write_text(json.dumps(manifest, indent=2))
 
     controller = self.path / packType["controller"]
-    packs = json.loads(controller.read_text()) or []
+    if controller.exists():
+      packs = json.loads(controller.read_text())
+    else:
+      packs = []
     packs.append({
       "pack_id": manifest["header"]["uuid"],
       "version": [0, 0, 1]

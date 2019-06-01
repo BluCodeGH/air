@@ -38,6 +38,10 @@ def _infer(text):
   if text == "true":
     return True
   try:
+    return int(text)
+  except ValueError:
+    pass
+  try:
     return float(text)
   except ValueError:
     pass
@@ -113,4 +117,4 @@ def convert(text, path):
   data = json.dumps(process(text), indent=2)
   return {dest: data}
 
-patterns = ["loot_tables/*.mcj", "animations/*.mcj", "animation_controllers/*.mcj", "entity/*.mcj", "render_controllers/*.mcj"]
+patterns = ["loot_tables/*.mcj", "animations/*.mcj", "animation_controllers/*.mcj", "entity/*.mcj", "render_controllers/*.mcj", "particles/*.mcj"]
