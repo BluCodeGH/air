@@ -51,6 +51,7 @@ def command(fn):
   if fn.__name__ in commands:
     raise ValueError("Duplucate command name {}".format(fn.__name__))
   commands[fn.__name__] = handle
+  return fn
 
 commands = {}
 def load():

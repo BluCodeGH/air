@@ -6,7 +6,8 @@ def match(pattern, path, is_dir):
   s = str(path)
   if is_dir:
     s += "/"
-  pattern = pattern.replace("/*", "/[^/]+")
+  if pattern != ".*":
+    pattern = pattern.replace("*", "[^/]+")
   return re.fullmatch(pattern, s)
 
 class Converter:

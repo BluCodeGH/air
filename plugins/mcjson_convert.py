@@ -2,12 +2,18 @@ import json
 import pathlib
 from plugin import command
 
-simple = (int, float, bool, str)
+simple = (int, float, str)
 def enc(obj):
   res = ""
   if isinstance(obj, dict):
     for k, v in obj.items():
-      if isinstance(v, simple):
+      if isinstance(v, bool):
+        res += "{} ".format(k)
+        if v:
+          res += "true\n"
+        else:
+          res += "false\n"
+      elif isinstance(v, simple):
         res += "{} {}\n".format(k, v)
       else:
         res += "{}\n".format(k)

@@ -66,7 +66,7 @@ world.go(converter.converters)
 class UpdateHandler(FileSystemEventHandler):
   @staticmethod
   def on_any_event(event):
-    if event.is_directory:
+    if event.is_directory or event.event_type == "created":
       return
     world.go(converter.converters)
 observer = Observer()

@@ -66,11 +66,14 @@ def process(text):
       return
     if wipKey is None:
       if None in res:
-        processed = process(wip)
-        if processed == {wip: {}}:
+        if _infer(wip) != wip:
           res[None].append(_infer(wip))
         else:
-          res[None].append(processed)
+          processed = process(wip)
+          if processed == {wip: {}}:
+            res[None].append(_infer(wip))
+          else:
+            res[None].append(processed)
       else:
         raise SyntaxError("Cannot have indent without heading.")
     elif wipKey in res:
@@ -117,4 +120,4 @@ def convert(text, path):
   data = json.dumps(process(text), indent=2)
   return {dest: data}
 
-patterns = ["loot_tables/*.mcj", "animations/*.mcj", "animation_controllers/*.mcj", "entity/*.mcj", "render_controllers/*.mcj", "particles/*.mcj"]
+patterns = ["*.mcj", "*/*.mcj"]

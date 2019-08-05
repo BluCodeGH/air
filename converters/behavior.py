@@ -38,7 +38,7 @@ def convert(text, path):
 
   entity.update(data)
 
-  final = {"format_version":"1.8.0", "minecraft:entity": entity}
+  final = {"format_version":"1.11.0", "minecraft:entity": entity}
   return {dest: json.dumps(final, indent=2)}
 
 patterns = ["entities/*.mcj"]
