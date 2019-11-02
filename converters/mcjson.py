@@ -12,7 +12,7 @@ def _infer(text):
       if c == '"':
         iq = not iq
       elif c == " " and not iq:
-        res.append(_infer(wip.strip()))
+        res.append(_infer(wip.strip(" ,")))
         wip = ""
       else:
         wip += c
@@ -117,7 +117,7 @@ def process(text):
 
 def convert(text, path):
   dest = path.with_suffix(".json")
-  data = json.dumps(process(text), indent=2)
+  data = json.dumps(process(text), indent=2).replace("\\u00a7", "§")
   return {dest: data}
 
 patterns = ["*.mcj", "*/*.mcj"]

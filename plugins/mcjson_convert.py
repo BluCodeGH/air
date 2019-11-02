@@ -22,7 +22,10 @@ def enc(obj):
   elif isinstance(obj, list):
     for item in obj:
       if isinstance(item, simple):
-        res += "- {}\n".format(item)
+        if isinstance(item, str) and not item.isalnum():
+          res += "- \"{}\"\n".format(item)
+        else:
+          res += "- {}\n".format(item)
       else:
         res += "- " + enc(item).replace("\n", "\n  ")[:-2]
   else:
