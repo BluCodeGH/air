@@ -73,7 +73,7 @@ def fallback(file, path):
 converters = [Converter([".*"], fallback)]
 usedPatterns = []
 def load():
-  for file in pathlib.Path("converters").glob("*.py"):
+  for file in (pathlib.Path(__file__).parent / "converters").glob("*.py"):
     #print("Loading converter {}".format(file.stem))
     c = importlib.import_module("converters.{}".format(file.stem))
     usedPatterns.extend(c.patterns)
