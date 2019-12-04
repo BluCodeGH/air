@@ -12,6 +12,8 @@ def convert(text, path):
       "is_experimental": False
     }
   }
+  if "spawn" in data:
+    entity["description"]["is_spawnable"] = data.pop("spawn")
 
   if "component_groups" in data:
     entity["component_groups"] = {}
