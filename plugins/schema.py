@@ -141,8 +141,19 @@ def analyze(path, selectors=None):
       continue
     data = json.loads(re.sub(r"\s*//.*\n", "", f.read_text()))
     for s in (selectors or []):
-      data = data[s]
-    res = merge(res, types(data))
+      data2 = data
+      try:
+        for ss in s:
+          if ss != "*":
+            data2 = data2[ss]
+          else:
+            for v in data2.values():
+              res = merge(res, types(v))
+            break
+        else:
+          res = merge(res, types(data2))
+      except KeyError:
+        pass
   return pprint(clean(res))
 
 def analyzeFile(path, selectors=None):
@@ -159,7 +170,7 @@ def bpschema(_, path):
   if not path.exists() or not path.is_dir():
     raise FileNotFoundError("Invalid path {}".format(path))
   (path / "schema").mkdir(exist_ok=True)
-  (path / "schema/components.txt").write_text(analyze(path / "entities", ["minecraft:entity", "components"]))
+  (path / "schema/components.txt").write_text(analyze(path / "entities", [["minecraft:entity", "components"], ["minecraft:entity", "component_groups", "*"]]))
   (path / "schema/loot_tables.txt").write_text(analyze(path / "loot_tables"))
   (path / "schema/spawn_rules.txt").write_text(analyze(path / "spawn_rules"))
   (path / "schema/trades.txt").write_text(analyze(path / "trading"))

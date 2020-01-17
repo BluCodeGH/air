@@ -1,4 +1,6 @@
 import json
+import re
+from converter import TextConverter
 
 def _infer(text):
   text = text.strip()
@@ -47,7 +49,7 @@ def _infer(text):
     pass
   return text
 
-def process(text):
+def dump(text):
   res = {}
   wip = ""
   wipKey = None
@@ -59,7 +61,7 @@ def process(text):
   None    *: in a list or random indent
   *       *: k, v
   """
-  def next(res, wipKey, wip):
+  def finish(res, wipKey, wip):
     if wip == "":
       if wipKey is not None:
         res[wipKey] = {}
@@ -69,7 +71,7 @@ def process(text):
         if _infer(wip) != wip:
           res[None].append(_infer(wip))
         else:
-          processed = process(wip)
+          processed = dump(wip)
           if processed == {wip: {}}:
             res[None].append(_infer(wip))
           else:
@@ -79,7 +81,7 @@ def process(text):
     elif wipKey in res:
       raise SyntaxError("Duplicate keys {}".format(wipKey))
     else:
-      res[wipKey] = process(wip)
+      res[wipKey] = dump(wip)
       if None in res[wipKey]:
         res[wipKey] = res[wipKey][None]
 
@@ -91,7 +93,7 @@ def process(text):
         wip += "\n"
       wip += line[2:]
     elif line.startswith("- "):
-      next(res, wipKey, wip)
+      finish(res, wipKey, wip)
       if res != {} and list(res.keys()) != [None]:
         raise SyntaxError("List must be indented from key in {}".format(text))
       wip = ""
@@ -100,24 +102,83 @@ def process(text):
         res[None] = []
       wip = line[2:]
     elif " " in line and not (line[0] == '"' and line[-1] == '"'):
-      next(res, wipKey, wip)
+      finish(res, wipKey, wip)
       wip = ""
       wipKey = None
       k, v = line.split(" ", 1)
       res[k] = _infer(v)
     else:
-      next(res, wipKey, wip)
+      finish(res, wipKey, wip)
       wipKey = line
       wip = ""
 
-  next(res, wipKey, wip)
+  finish(res, wipKey, wip)
   if res == {} and text:
     return _infer(text)
+  if len(res.keys()) == 1 and None in res:
+    return res[None]
   return res
 
-def convert(text, path):
-  dest = path.with_suffix(".json")
-  data = json.dumps(process(text), indent=2).replace("\\u00a7", "§")
-  return {dest: data}
+simple = (int, float, str)
+def load(obj):
+  res = ""
+  if isinstance(obj, dict):
+    for k, v in obj.items():
+      if isinstance(v, bool):
+        res += "{} ".format(k)
+        if v:
+          res += "true\n"
+        else:
+          res += "false\n"
+      elif isinstance(v, simple):
+        if isinstance(v, str) and (" " in v or v.isdecimal() or len(v) == 0):
+          res += "{} \"{}\"\n".format(k, v)
+        else:
+          res += "{} {}\n".format(k, v)
+      else:
+        if isinstance(v, list) and 1 < len(v) < 4:
+          for item in v:
+            if not isinstance(item, simple) or (isinstance(item, str) and (" " in item or len(item) > 10)):
+              break
+          else:
+            res += "{} [{}]\n".format(k, " ".join([(str(item) if not isinstance(item, str) or not item.isdecimal() else "\"{}\"".format(item)) for item in v]))
+            continue
+        res += "{}\n".format(k)
+        for line in load(v).splitlines():
+          res += "  " + line + "\n"
+  elif isinstance(obj, list):
+    for item in obj:
+      if isinstance(item, simple):
+        if isinstance(item, str) and (" " in item or item.isdecimal() or len(item) == 0):
+          res += "- \"{}\"\n".format(item)
+        else:
+          res += "- {}\n".format(item)
+      else:
+        res += "- " + load(item).replace("\n", "\n  ")[:-2]
+  else:
+    raise ValueError("Invalid type of json object {}".format(type(obj)))
+  return res
 
-patterns = ["*.mcj", "*/*.mcj"]
+comment = re.compile(r"//.*|/\*.+?\*/")
+class MCJson(TextConverter):
+  def priority(self):
+    return 0
+
+  def dump(self, text):
+    return json.dumps(dump(text), indent=2).replace("\\u00a7", "§")
+
+  def dump_path(self, path):
+    if path.suffix != ".mcj":
+      return False
+    return path.with_suffix(".json")
+
+  def load(self, text):
+    text = comment.sub("", text)
+    return load(json.loads(text))
+
+  def load_path(self, path):
+    if path.suffix != ".json":
+      return False
+    return path.with_suffix(".mcj")
+
+MCJson()

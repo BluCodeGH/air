@@ -1,4 +1,4 @@
-import pathlib
+from pathlib import Path
 import readline
 from colorama import init, Fore, Style
 from watchdog.observers import Observer
@@ -7,7 +7,7 @@ from world import World
 import converter
 import plugin
 init(autoreset=True)
-converter.load()
+converter.init()
 plugin.load()
 
 def readConfig(file):
@@ -27,8 +27,8 @@ def readConfig(file):
   return config
 
 configData = readConfig("config.txt")
-mcw = pathlib.Path(configData["minecraftWorlds"][0]).expanduser().resolve()
-dev = pathlib.Path(configData["dev"][0]).expanduser().resolve()
+mcw = Path(configData["minecraftWorlds"][0]).expanduser().resolve()
+dev = Path(configData["dev"][0]).expanduser().resolve()
 
 worlds = [((d / "levelname.txt").read_text(), d) for d in mcw.iterdir() if d.is_dir()]
 print(Fore.GREEN + "Found worlds: " + Style.RESET_ALL + ", ".join([w for w, _ in worlds]))
@@ -60,15 +60,41 @@ while world is None:
       print(Fore.BLUE + "    Loading " + world[0])
     else:
       print(Fore.RED + "    Invalid folder name entered.")
+
 world = World(world[1], dev)
-world.go(converter.converters)
+for pack in world.devPath.glob("*"):
+  world.go(Path(pack.parts[-1]), converter.loadAll)
+for path in world.devPath.rglob("*"):
+  if path.is_dir():
+    continue
+  path = path.relative_to(world.devPath)
+  world.go(path, converter.changed)
 
 class UpdateHandler(FileSystemEventHandler):
   @staticmethod
-  def on_any_event(event):
-    if event.is_directory or event.event_type == "created":
+  def on_modified(event):
+    if event.is_directory:
       return
-    world.go(converter.converters)
+    UpdateHandler._handle(event.src_path, converter.changed)
+
+  @staticmethod
+  def on_deleted(event):
+    if event.is_directory:
+      return
+    UpdateHandler._handle(event.src_path, converter.deleted)
+
+  @staticmethod
+  def on_moved(event):
+    if event.is_directory:
+      return
+    UpdateHandler._handle(event.src_path, converter.deleted)
+    UpdateHandler._handle(event.dest_path, converter.changed)
+
+  @staticmethod
+  def _handle(path, fn):
+    path = Path(path).relative_to(world.devPath)
+    world.go(path, fn)
+
 observer = Observer()
 observer.schedule(UpdateHandler(), str(world.devPath), recursive=True)
 observer.start()

@@ -29,13 +29,13 @@ class World:
 
   def createPack(self, name, packType):
     manifest = {
-      "format_version": 1,
+      "format_version": 2,
       "header": {
         "name": name,
         "description": name,
         "uuid": str(uuid.uuid4()),
         "version": [0, 0, 1],
-        "min_engine_version": [1, 9, 0]
+        "min_engine_version": [1, 13, 0]
       },
       "modules": [
         {
@@ -62,7 +62,15 @@ class World:
     })
     controller.write_text(json.dumps(packs, indent=2))
 
-  def go(self, converters):
-    for converter in converters:
-      converter.go(self.devPath / "rp", self.path / "resource_packs" / "rp")
-      converter.go(self.devPath / "bp", self.path / "behavior_packs" / "bp")
+  def go(self, path, fn):
+    pack = path.parts[0]
+    dest = self.path
+    manifest = (self.devPath / pack / "manifest.mcj").read_text()
+    if "type resources" in manifest:
+      dest /= "resource_packs"
+    elif "type data" in manifest:
+      dest /= "behavior_packs"
+    else:
+      print(f"Unknown pack type for pack {pack}")
+      return
+    fn(self.devPath, path, dest)
