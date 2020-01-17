@@ -115,6 +115,8 @@ def dump(text):
   finish(res, wipKey, wip)
   if res == {} and text:
     return _infer(text)
+  if len(res.keys()) == 1 and None in res:
+    return res[None]
   return res
 
 simple = (int, float, str)
@@ -129,18 +131,25 @@ def load(obj):
         else:
           res += "false\n"
       elif isinstance(v, simple):
-        if isinstance(v, str) and (not v.isalnum() or v.isdecimal()):
+        if isinstance(v, str) and (" " in v or v.isdecimal() or len(v) == 0):
           res += "{} \"{}\"\n".format(k, v)
         else:
           res += "{} {}\n".format(k, v)
       else:
+        if isinstance(v, list) and 1 < len(v) < 4:
+          for item in v:
+            if not isinstance(item, simple) or (isinstance(item, str) and (" " in item or len(item) > 10)):
+              break
+          else:
+            res += "{} [{}]\n".format(k, " ".join([(str(item) if not isinstance(item, str) or not item.isdecimal() else "\"{}\"".format(item)) for item in v]))
+            continue
         res += "{}\n".format(k)
         for line in load(v).splitlines():
           res += "  " + line + "\n"
   elif isinstance(obj, list):
     for item in obj:
       if isinstance(item, simple):
-        if isinstance(item, str) and (not item.isalnum() or item.isdecimal()):
+        if isinstance(item, str) and (" " in item or item.isdecimal() or len(item) == 0):
           res += "- \"{}\"\n".format(item)
         else:
           res += "- {}\n".format(item)

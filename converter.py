@@ -56,6 +56,8 @@ class Symlink(FileConverter):
     return 100
 
   def dump(self, source, path, dest):
+    if path.name.startswith("."):
+      return
     if (dest / path).is_symlink():
       if (dest / path).resolve() != source / path:
         print(f"Warning: Couldn't dump path {path} as another symlink already exists.")
@@ -140,7 +142,7 @@ def deleted(_, path, dest):
     if (dump := converter.dump_path(path)) and isinstance(dump, Path):
       destPath = dump
   print("DELETE", dest / destPath)
-  #(dest / destPath).unlink()
+  (dest / destPath).unlink()
 
 def load(source, path, dest):
   def _get(file):
@@ -167,6 +169,7 @@ def load(source, path, dest):
   if (source / srcPath).exists():
     if (source / srcPath).read_text().strip() == data.strip():
       return
+    print(data)
     choice = ""
     while choice == "" or choice not in "><s":
       choice = input("Warning: {} source and dest are different. air [><s] world: ".format(srcPath))

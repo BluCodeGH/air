@@ -46,7 +46,7 @@ class Behavior(TextConverter):
     return json.dumps(final, indent=2)
 
   def dump_path(self, path):
-    return path.match("bp/entities/*.mcj")
+    return path.match("*/entities/*.mcj")
 
   def load(self, text):
     data = json.loads(text)["minecraft:entity"]
@@ -86,6 +86,6 @@ class Behavior(TextConverter):
     return json.dumps(res)
 
   def load_path(self, path):
-    return path.match("bp/entities/*.json")
+    return path.match("*/entities/*.json")
 
 Behavior()

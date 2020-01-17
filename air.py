@@ -62,8 +62,8 @@ while world is None:
       print(Fore.RED + "    Invalid folder name entered.")
 
 world = World(world[1], dev)
-world.go(Path("rp"), converter.loadAll)
-world.go(Path("bp"), converter.loadAll)
+for pack in world.devPath.glob("*"):
+  world.go(Path(pack.parts[-1]), converter.loadAll)
 for path in world.devPath.rglob("*"):
   if path.is_dir():
     continue

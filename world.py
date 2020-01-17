@@ -65,8 +65,12 @@ class World:
   def go(self, path, fn):
     pack = path.parts[0]
     dest = self.path
-    if pack == "rp":
+    manifest = (self.devPath / pack / "manifest.mcj").read_text()
+    if "type resources" in manifest:
       dest /= "resource_packs"
-    elif pack == "bp":
+    elif "type data" in manifest:
       dest /= "behavior_packs"
+    else:
+      print(f"Unknown pack type for pack {pack}")
+      return
     fn(self.devPath, path, dest)
