@@ -61,11 +61,16 @@ def entity(world, name):
         "value": 1,
         "max": 1
       },
-      "push_through": {
-        "value": 1
+      "pushable": {
+        "is_pushable": False,
+        "is_pushable_by_piston": False
       },
       "damage_sensor": {
-        "deals_damage": False
+        "triggers": [
+          {
+            "deals_damage": False
+          }
+        ]
       },
       "physics": {}
     }
