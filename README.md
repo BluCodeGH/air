@@ -1,6 +1,8 @@
 # air
 Air is a wrapper around developing for Minecraft: Bedrock Edition. At it's core, it keeps two directories in sync: a development directory and the resource and behavior pack folders of the world being worked on.
+
 Air's true power, however, comes from its processing capabilites during this syncing. For example, the `mcjson` converter transparently and, more importantly, bidirectionally converts between  `.mcj` files in the development folder and `.json` files in the world.
+
 Air also supports plugins which can do simple one-time tasks such as setting up base entities to work off of, generating syntax summaries, or any multitude of things.
 
 ## Syncing
