@@ -182,14 +182,12 @@ def unison(sourceDir, destDir):
       dest = read(file.dest)
       if dest.strip() == file.contents.strip():
         continue
-      print(dest)
-      print(file.contents)
       sources = _apply([file.reverse()], "load", reverse=True)
       for source in sources:
         print(f"{source.path}\n{source.contents}")
       response = ""
       while not response or response not in "<>s":
-        response = input(f"Files {file.path} differ. air [<>s] world: ")
+        response = input(f"Files {file._source.name}/{file.path} differ. air [<>s] world: ")
       if response == ">":
         write(file.dest, file.contents)
       if response == "<":
