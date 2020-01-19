@@ -55,7 +55,7 @@ def command(fn):
 
 commands = {}
 def load():
-  for file in pathlib.Path("plugins").glob("*.py"):
+  for file in (pathlib.Path(__file__).parent / "plugins").glob("*.py"):
     print("Loading plugin {}".format(file.stem))
     importlib.import_module("plugins.{}".format(file.stem))
 
