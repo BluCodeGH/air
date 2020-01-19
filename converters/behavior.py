@@ -1,13 +1,16 @@
 from collections import OrderedDict
 import json
-from converter import TextConverter
+from converter import Converter
 
-class Behavior(TextConverter):
+class Behavior(Converter):
+  @property
   def priority(self):
     return 10
 
-  def dump(self, text):
-    data = json.loads(text)
+  def dump(self, file):
+    if not file.path.match("entities/*.json"):
+      return file
+    data = json.loads(file.contents)
     entity = {
       "description": {
         "identifier": data.pop("identifier"),
@@ -43,13 +46,13 @@ class Behavior(TextConverter):
     entity.update(data)
     final = {"format_version":"1.13.0", "minecraft:entity": entity}
 
-    return json.dumps(final, indent=2)
+    file.contents = json.dumps(final, indent=2)
+    return file
 
-  def dump_path(self, path):
-    return path.match("*/entities/*.mcj")
-
-  def load(self, text):
-    data = json.loads(text)["minecraft:entity"]
+  def load(self, file):
+    if not file.path.match("entities/*.json"):
+      return file
+    data = json.loads(file.contents)["minecraft:entity"]
 
     res = OrderedDict({
       "identifier": data["description"]["identifier"]
@@ -83,9 +86,7 @@ class Behavior(TextConverter):
 
     res.update(data)
 
-    return json.dumps(res)
-
-  def load_path(self, path):
-    return path.match("*/entities/*.json")
+    file.contents = json.dumps(res)
+    return file
 
 Behavior()

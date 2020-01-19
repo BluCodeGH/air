@@ -1,6 +1,5 @@
 import json
-from converter import TextConverter
-import converters.mcjson as mcjson
+from converter import Converter
 
 def update(d1, d2):
   for k in d2.keys():
@@ -22,35 +21,36 @@ def difference(d1, d2):
       res[k] = d1[k]
   return res
 
-class Template(TextConverter):
+class Template(Converter):
+  @property
   def priority(self):
     return 5
 
-  def dump(self, text):
-    data = json.loads(text)
-    try:
-      template = mcjson.dump(self._get("source/TEMPLATE.mcj"))
-    except FileNotFoundError:
-      #print("Not found.", text[:15])
-      return text
-    update(template, data)
-    return json.dumps(template, indent=2)
+  # def dump(self, text):
+  #   data = json.loads(text)
+  #   try:
+  #     template = mcjson.dump(self._get("source/TEMPLATE.mcj"))
+  #   except FileNotFoundError:
+  #     #print("Not found.", text[:15])
+  #     return text
+  #   update(template, data)
+  #   return json.dumps(template, indent=2)
 
-  def dump_path(self, path):
-    if path.name == "TEMPLATE.mcj":
-      raise ValueError
-    return path.suffixes[-2:] == [".template", ".mcj"]
+  # def dump_path(self, path):
+  #   if path.name == "TEMPLATE.mcj":
+  #     raise ValueError
+  #   return path.suffixes[-2:] == [".template", ".mcj"]
 
-  def load(self, text):
-    final = json.loads(text)
-    try:
-      template = mcjson.dump(self._get("source/TEMPLATE.mcj"))
-    except FileNotFoundError:
-      return text
-    original = difference(final, template)
-    return json.dumps(original)
+  # def load(self, text):
+  #   final = json.loads(text)
+  #   try:
+  #     template = mcjson.dump(self._get("source/TEMPLATE.mcj"))
+  #   except FileNotFoundError:
+  #     return text
+  #   original = difference(final, template)
+  #   return json.dumps(original)
 
-  def load_path(self, path):
-    return path.suffixes[-2:] == [".template", ".json"]
+  # def load_path(self, path):
+  #   return path.suffixes[-2:] == [".template", ".json"]
 
 Template()

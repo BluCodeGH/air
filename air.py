@@ -1,8 +1,10 @@
+import os
 from pathlib import Path
 import readline
+import time
 from colorama import init, Fore, Style
 from watchdog.observers import Observer
-from watchdog.events import FileSystemEventHandler
+from watchdog.events import PatternMatchingEventHandler
 from world import World
 import converter
 import plugin
@@ -61,42 +63,87 @@ while world is None:
     else:
       print(Fore.RED + "    Invalid folder name entered.")
 
-world = World(world[1], dev)
-for pack in world.devPath.glob("*"):
-  world.go(Path(pack.parts[-1]), converter.loadAll)
-for path in world.devPath.rglob("*"):
-  if path.is_dir():
-    continue
-  path = path.relative_to(world.devPath)
-  world.go(path, converter.changed)
 
-class UpdateHandler(FileSystemEventHandler):
+world = World(world[1], dev)
+packs = set()
+for pack in world.devPath.glob("*"):
+  packs.add(pack.name)
+  converter.unison(pack, world.file(pack)[2])
+for packType in ["resource", "behavior"]:
+  for pack in world.path.joinpath(f"{packType}_packs").glob("*"):
+    if pack.name not in packs:
+      converter.unison(world.file(pack)[2], pack)
+
+DELAY = 1
+class SourceHandler(PatternMatchingEventHandler):
+  busy = 0
+  def __init__(self):
+    super().__init__(ignore_directories=True)
+
+  def dispatch(self, event):
+    if time.time() - DestHandler.busy < DELAY:
+      return
+    SourceHandler.busy = time.time()
+    super().dispatch(event)
+
+  @staticmethod
+  def on_created(event):
+    if os.path.getsize(event.src_path) == 0:
+      return
+    SourceHandler.on_modified(event)
+
   @staticmethod
   def on_modified(event):
-    if event.is_directory:
-      return
-    UpdateHandler._handle(event.src_path, converter.changed)
+    source, path, dest = world.file(event.src_path)
+    converter.dump([converter.File(source, path, dest)])
 
   @staticmethod
   def on_deleted(event):
-    if event.is_directory:
-      return
-    UpdateHandler._handle(event.src_path, converter.deleted)
+    _, path, dest = world.file(event.src_path)
+    converter.delete([path], dest)
 
   @staticmethod
   def on_moved(event):
-    if event.is_directory:
+    SourceHandler.on_deleted(event)
+    event.src_path = event.dest_path
+    SourceHandler.on_modified(event)
+
+class DestHandler(PatternMatchingEventHandler):
+  busy = 0
+  def __init__(self):
+    super().__init__(patterns=["*_packs/*"], ignore_directories=True)
+
+  def dispatch(self, event):
+    if time.time() - SourceHandler.busy < DELAY:
       return
-    UpdateHandler._handle(event.src_path, converter.deleted)
-    UpdateHandler._handle(event.dest_path, converter.changed)
+    DestHandler.busy = time.time()
+    super().dispatch(event)
 
   @staticmethod
-  def _handle(path, fn):
-    path = Path(path).relative_to(world.devPath)
-    world.go(path, fn)
+  def on_created(event):
+    if os.path.getsize(event.src_path) == 0:
+      return
+    DestHandler.on_modified(event)
+
+  @staticmethod
+  def on_modified(event):
+    source, path, dest = world.file(event.src_path)
+    converter.load([converter.File(source, path, dest)])
+
+  @staticmethod
+  def on_deleted(event):
+    _, path, _ = world.file(event.src_path)
+    print(f"Remember to delete the equivalent of {path}")
+
+  @staticmethod
+  def on_moved(event):
+    DestHandler.on_deleted(event)
+    event.src_path = event.dest_path
+    DestHandler.on_modified(event)
 
 observer = Observer()
-observer.schedule(UpdateHandler(), str(world.devPath), recursive=True)
+observer.schedule(SourceHandler(), str(world.devPath), recursive=True)
+observer.schedule(DestHandler(), str(world.path), recursive=True)
 observer.start()
 
 try:

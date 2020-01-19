@@ -1,189 +1,204 @@
+from typing import Union, List
 import filecmp
 import importlib
 import os
 from pathlib import Path
 
+def write(path, contents):
+  path.parent.mkdir(parents=True, exist_ok=True)
+  if isinstance(contents, str):
+    path.write_text(contents)
+  else:
+    path.write_bytes(contents)
+
+def read(path):
+  try:
+    contents = path.read_text()
+  except UnicodeDecodeError:
+    contents = path.read_bytes()
+  return contents
+
+# Files always go source -> dest, so when loading they are reversed
+class File:
+  def __init__(self, source, path, dest):
+    self._source = source
+    self.path = path
+    self._dest = dest
+    self._contents = None
+    self.dirty = False
+
+  @property
+  def contents(self):
+    if not self.dirty:
+      self.dirty = True
+      self._contents = read(self.source)
+    return self._contents
+
+  @contents.setter
+  def contents(self, contents):
+    self.dirty = True
+    self._contents = contents
+
+  @property
+  def source(self):
+    return self._source / self.path
+
+  @property
+  def dest(self):
+    return self._dest / self.path
+
+  def reverse(self):
+    return File(self._dest, self.path, self._source)
+
 class Converter:
   _converters = {}
   def __init__(self):
     print("Loaded converter {}".format(self.__class__.__name__))
-    p = self.priority()
-    if p in self._converters:
-      print("Err: Duplicate priority between {} and {}".format(self, self._converters[p]))
+    if self.priority in self._converters:
+      print(f"Err: Duplicate priority between {self} and {self._converters[self.priority]}")
       return
-    self._converters[p] = self
+    self._converters[self.priority] = self
+
+  def __lt__(self, other):
+    if isinstance(other, Converter):
+      return self.priority < other.priority
+    return self.priority < other
 
   # Lowest to greatest
-  def priority(self):
+  @property
+  def priority(self) -> int:
     raise NotImplementedError
 
-  # False -> skip
-  # True -> process and continue
-  # Path -> process and continue, eventually write to path
-  def dump_path(self, path):
-    raise NotImplementedError
+  def dump(self, file: File) -> Union[None, File, List[File]]:
+    return file
 
-  # convert output path to input path, return None if won't process
-  def load_path(self, path):
-    raise NotImplementedError
+  def load(self, file: File) -> Union[None, File]:
+    return file
 
-class TextConverter(Converter):
-  # air -> world
-  def dump(self, text):
-    raise NotImplementedError
+  def delete(self, path: Path) -> Union[None, Path, List[Path]]:
+    return path
 
-  # world -> air
-  def load(self, text):
-    raise NotImplementedError
-
-  # get file relative to text when dumping/loading
-  def _get(self, path):
-    raise Exception("_get method not replaced.")
-
-class FileConverter(Converter):
-  # air -> world
-  def dump(self, source, path, dest):
-    raise NotImplementedError
-
-  # world -> air
-  def load(self, source, path, dest):
-    raise NotImplementedError
-
-
-
-class Symlink(FileConverter):
+class SymlinkDump(Converter):
+  @property
   def priority(self):
     return 100
 
-  def dump(self, source, path, dest):
-    if path.name.startswith("."):
-      return
-    if (dest / path).is_symlink():
-      if (dest / path).resolve() != source / path:
-        print(f"Warning: Couldn't dump path {path} as another symlink already exists.")
-      return
-    if (dest / path).exists():
-      print(f"Warning: Couldn't dump path {path} as the destination already exists.")
-      return
-    (dest / path).parent.mkdir(parents=True, exist_ok=True)
-    os.symlink(source / path, dest / path)
+  def dump(self, file):
+    if file.dirty:
+      return file
+    if file.path.name.startswith("."):
+      return None
+    if file.dest.is_symlink():
+      if file.dest.resolve() != file.source:
+        print(f"Warning: Couldn't dump path {file.path} as another symlink already exists.")
+      return None
+    if file.dest.exists():
+      print(f"Warning: Couldn't dump path {file.path} as the destination already exists.")
+      return None
+    file.dest.parent.mkdir(parents=True, exist_ok=True)
+    os.symlink(file.source, file.dest)
+    return None
+SymlinkDump()
 
-  def dump_path(self, path):
-    for converter in self._converters.values():
-      if converter != self and converter.dump_path(path):
-        return False
-    return True
+class SymlinkLoad(Converter):
+  @property
+  def priority(self):
+    return -100
 
-  def load(self, source, path, dest):
-    if (dest / path).is_symlink():
-      if (dest / path).resolve() != source / path:
-        print(f"Warning: Couldn't load path {path} as symlink points to wrong location.")
-      return
-    if (source / path).exists():
-      if not filecmp.cmp(source / path, dest / path):
-        print(f"Warning: Couldn't load path {path} as the source already exists.")
-      else:
-        (dest / path).unlink()
+  def load(self, file):
+    if file.dirty:
+      return file
+    if file.path.name.startswith("."):
+      return None
+    if file.source.is_symlink():
+      if file.source.resolve() != file.dest:
+        print(f"Warning: Couldn't symlink path {file.path} as symlink points to wrong location.")
+      return None
+    if file.dest.exists():
+      if not filecmp.cmp(file.dest, file.source):
+        print(f"Warning: Couldn't symlink path {file.path} as the source already exists.")
+        return None
+      file.source.unlink()
     else:
-      (source / path).parent.mkdir(parents=True, exist_ok=True)
-      os.rename(dest / path, source / path)
-    os.symlink(source / path, dest / path)
-
-  def load_path(self, path):
-    for converter in self._converters.values():
-      if converter != self and converter.load_path(path):
-        return False
-    return True
-
-Symlink()
+      file.dest.parent.mkdir(parents=True, exist_ok=True)
+      os.rename(file.source, file.dest)
+    os.symlink(file.dest, file.source)
+    return None
+SymlinkLoad()
 
 def init():
   for file in (Path(__file__).parent / "converters").glob("*.py"):
     #print("Loading converter {}".format(file.stem))
     importlib.import_module("converters.{}".format(file.stem))
 
-# source / path = file, dest is equivalent to source
-def changed(source, path, dest):
-  def _get(file):
-    if file.startswith("source/"):
-      return (source / path).with_name(file[7:]).read_text()
-    if file.startswith("dest/"):
-      return (dest / path).with_name(file[5:]).read_text()
-    return (source / path).with_name(file).read_text()
-  data = None
-  destPath = path
-  for _, converter in sorted(Converter._converters.items(), key=lambda k: k[0]):
-    try:
-      if not (dump := converter.dump_path(path)):
+def _apply(items, fn, *, reverse=False):
+  for converter in sorted(Converter._converters.values(), reverse=reverse):
+    oldItems = items
+    items = []
+    for item in oldItems:
+      if res := getattr(converter, fn)(item):
+        if not isinstance(res, list):
+          res = [res]
+        items += res
+  return items
+
+def dump(files: List[File]):
+  files = _apply(files, "dump")
+  for file in files:
+    if not file.dirty:
+      print(f"Warning: Didn't catch file {file.path}.")
+    write(file.dest, file.contents)
+
+def load(files: List[File]):
+  files = _apply(files, "load", reverse=True)
+  for file in files:
+    if not file.dirty:
+      print(f"Warning: Didn't catch file {file.path}.")
+    write(file.dest, file.contents)
+
+def delete(paths: List[Path], dest):
+  path = _apply(paths, "delete")
+  for path in paths:
+    path = dest / path
+    if not path.exists():
+      print(f"Warning: Can't delete file {path} as it does not exist.")
+      continue
+    print(f"Deleting {path}")
+    #path.unlink()
+
+def _iterate(path):
+  for p in path.rglob("*"):
+    if p.is_dir():
+      continue
+    yield p.relative_to(path)
+
+def unison(sourceDir, destDir):
+  for path in _iterate(sourceDir):
+    files = _apply([File(sourceDir, path, destDir)], "dump")
+    for file in files:
+      if not file.dest.exists():
+        write(file.dest, file.contents)
         continue
-    except ValueError:
-      for path2 in (source / path).parent.glob("*"):
-        if path2.is_dir() or path2 == source / path:
-          continue
-        path2 = path2.relative_to(source)
-        changed(source, path2, dest)
-      return
-    if isinstance(converter, FileConverter):
-      converter.dump(source, path, dest)
-      return
-    if data is None:
-      data = (source / path).read_text()
-    converter._get = _get
-    data = converter.dump(data)
-    converter._get = None
-    if isinstance(dump, Path):
-      destPath = dump
-  (dest / destPath).parent.mkdir(parents=True, exist_ok=True)
-  (dest / destPath).write_text(data)
+      dest = read(file.dest)
+      if dest.strip() == file.contents.strip():
+        continue
+      print(dest)
+      print(file.contents)
+      sources = _apply([file.reverse()], "load", reverse=True)
+      for source in sources:
+        print(f"{source.path}\n{source.contents}")
+      response = ""
+      while not response or response not in "<>s":
+        response = input(f"Files {file.path} differ. air [<>s] world: ")
+      if response == ">":
+        write(file.dest, file.contents)
+      if response == "<":
+        for source in sources:
+          write(source.dest, source.contents)
 
-def deleted(_, path, dest):
-  destPath = path
-  for _, converter in sorted(Converter._converters.items(), key=lambda k: k[0]):
-    if (dump := converter.dump_path(path)) and isinstance(dump, Path):
-      destPath = dump
-  print("DELETE", dest / destPath)
-  (dest / destPath).unlink()
-
-def load(source, path, dest):
-  def _get(file):
-    if file.startswith("source/"):
-      return (source / path).with_name(file[7:]).read_text()
-    if file.startswith("dest/"):
-      return (dest / path).with_name(file[5:]).read_text()
-    return (dest / path).with_name(file).read_text()
-  data = None
-  srcPath = path
-  for _, converter in sorted(Converter._converters.items(), key=lambda k: k[0], reverse=True):
-    if not (dump := converter.load_path(path)):
-      continue
-    if isinstance(converter, FileConverter):
-      converter.load(source, path, dest)
-      return
-    if data is None:
-      data = (dest / path).read_text()
-    converter._get = _get
-    data = converter.load(data)
-    converter._get = None
-    if isinstance(dump, Path):
-      srcPath = dump
-  if (source / srcPath).exists():
-    if (source / srcPath).read_text().strip() == data.strip():
-      return
-    print(data)
-    choice = ""
-    while choice == "" or choice not in "><s":
-      choice = input("Warning: {} source and dest are different. air [><s] world: ".format(srcPath))
-    if choice == "s":
-      return
-    if choice == ">":
-      changed(source, srcPath, dest)
-      return
-  (source / srcPath).parent.mkdir(parents=True, exist_ok=True)
-  (source / srcPath).write_text(data)
-
-def loadAll(source, _, dest):
-  for path in dest.rglob("*"):
-    if path.is_dir():
-      continue
-    path = path.relative_to(dest)
-    load(source, path, dest)
+  for path in _iterate(destDir):
+    files = _apply([File(destDir, path, sourceDir)], "load", reverse=True)
+    for file in files:
+      if not file.dest.exists():
+        write(file.dest, file.contents)
+        continue

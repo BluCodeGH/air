@@ -1,6 +1,6 @@
 import json
 import re
-from converter import TextConverter
+from converter import Converter
 
 def _infer(text):
   text = text.strip()
@@ -160,25 +160,30 @@ def load(obj):
   return res
 
 comment = re.compile(r"//.*|/\*.+?\*/")
-class MCJson(TextConverter):
+class MCJson(Converter):
+  @property
   def priority(self):
     return 0
 
-  def dump(self, text):
-    return json.dumps(dump(text), indent=2).replace("\\u00a7", "§")
+  def dump(self, file):
+    if file.path.suffix != ".mcj":
+      return file
+    obj = dump(file.contents)
+    file.contents = json.dumps(obj, indent=2).replace("\\u00a7", "§")
+    file.path = file.path.with_suffix(".json")
+    return file
 
-  def dump_path(self, path):
+  def load(self, file):
+    if file.path.suffix != ".json":
+      return file
+    text = comment.sub("", file.contents)
+    file.contents = load(json.loads(text))
+    file.path = file.path.with_suffix(".mcj")
+    return file
+
+  def delete(self, path):
     if path.suffix != ".mcj":
-      return False
+      return path
     return path.with_suffix(".json")
-
-  def load(self, text):
-    text = comment.sub("", text)
-    return load(json.loads(text))
-
-  def load_path(self, path):
-    if path.suffix != ".json":
-      return False
-    return path.with_suffix(".mcj")
 
 MCJson()

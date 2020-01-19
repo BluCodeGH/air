@@ -1,5 +1,6 @@
-import uuid
 import json
+from pathlib import Path
+import uuid
 
 class World:
   packTypes = [{
@@ -20,6 +21,7 @@ class World:
     self.devPath = devPath / self.name
     if not self.devPath.exists():
       self.create()
+    self.knownPacks = {}
 
   def create(self):
     print("Setting up " + self.name)
@@ -62,15 +64,36 @@ class World:
     })
     controller.write_text(json.dumps(packs, indent=2))
 
-  def go(self, path, fn):
-    pack = path.parts[0]
-    dest = self.path
-    manifest = (self.devPath / pack / "manifest.mcj").read_text()
-    if "type resources" in manifest:
-      dest /= "resource_packs"
-    elif "type data" in manifest:
-      dest /= "behavior_packs"
-    else:
-      print(f"Unknown pack type for pack {pack}")
-      return
-    fn(self.devPath, path, dest)
+  def getPack(self, pack):
+    if pack not in self.knownPacks:
+      manifest = (self.devPath / pack / "manifest.mcj").read_text()
+      if "type resources" in manifest:
+        self.knownPacks[pack] = "resource_packs"
+      elif "type data" in manifest:
+        self.knownPacks[pack] = "behavior_packs"
+      else:
+        print(f"Unknown pack type for pack {pack}")
+        return None
+    return self.knownPacks[pack]
+
+  def file(self, path):
+    if not isinstance(path, Path):
+      path = Path(path)
+    try:
+      path = path.relative_to(self.devPath)
+      pack = path.parts[0]
+      source = self.devPath / pack
+      path = path.relative_to(pack)
+      dest = self.path / self.getPack(pack) / pack
+    except ValueError:
+      try:
+        path = path.relative_to(self.path)
+        packType = path.parts[0]
+        pack = path.parts[1]
+        source = self.path / packType / pack
+        path = path.relative_to(packType, pack)
+        dest = self.devPath / pack
+      except ValueError:
+        print(f"Error: Can't create file for unknown path {path}")
+        return None
+    return source, path, dest
