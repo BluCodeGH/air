@@ -24,10 +24,11 @@ class Behavior(Converter):
       entity["component_groups"] = {}
       for name, components in data.pop("component_groups").items():
         entity["component_groups"][name] = {"minecraft:" + k:v for k, v in components.items()}
-    for key in ["animations", "scripts"]:
+    for key in ["animations", "scripts", "runtime_identifier"]:
       if key in data:
         entity["description"][key] = data.pop(key)
-    entity["components"] = {"minecraft:" + k:v for k, v in data.pop("components").items()}
+    if "components" in data:
+      entity["components"] = {"minecraft:" + k:v for k, v in data.pop("components").items()}
     def events(d):
       if isinstance(d, dict):
         for k, v in d.items():
@@ -68,7 +69,8 @@ class Behavior(Converter):
       res["component_groups"] = {}
       for name, components in data.pop("component_groups").items():
         res["component_groups"][name] = {k[10:]:v for k, v in components.items()}
-    res["components"] = {k[10:]:v for k, v in data.pop("components").items()}
+    if "components" in data:
+      res["components"] = {k[10:]:v for k, v in data.pop("components").items()}
     def events(d):
       if isinstance(d, dict):
         for k, v in d.items():
