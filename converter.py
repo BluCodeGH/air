@@ -157,14 +157,14 @@ def load(files: List[File]):
     write(file.dest, file.contents)
 
 def delete(paths: List[Path], dest):
-  path = _apply(paths, "delete")
+  paths = _apply(paths, "delete")
   for path in paths:
     path = dest / path
-    if not path.exists():
+    if not (path.is_symlink() or path.exists()):
       print(f"Warning: Can't delete file {path} as it does not exist.")
       continue
     print(f"Deleting {path}")
-    #path.unlink()
+    path.unlink()
 
 def _iterate(path):
   for p in path.rglob("*"):
@@ -174,6 +174,7 @@ def _iterate(path):
 
 def unison(sourceDir, destDir):
   for path in _iterate(sourceDir):
+    #print(path)
     files = _apply([File(sourceDir, path, destDir)], "dump")
     for file in files:
       if not file.dest.exists():
@@ -193,6 +194,7 @@ def unison(sourceDir, destDir):
       if response == "<":
         for source in sources:
           write(source.dest, source.contents)
+        dump([source.reverse() for source in sources])
 
   for path in _iterate(destDir):
     files = _apply([File(destDir, path, sourceDir)], "load", reverse=True)
