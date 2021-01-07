@@ -19,9 +19,9 @@ class World:
     self.path = path
     self.name = (self.path / "levelname.txt").read_text()
     self.devPath = devPath / self.name
+    self.knownPacks = {}
     if not self.devPath.exists():
       self.create()
-    self.knownPacks = {}
 
   def create(self):
     print("Setting up " + self.name)
@@ -30,6 +30,8 @@ class World:
     self.createPack(self.name + " Behaviors", self.packTypes[1])
 
   def createPack(self, name, packType):
+    self.knownPacks[packType["shortFolder"]] = packType["folder"]
+
     manifest = {
       "format_version": 2,
       "header": {
@@ -37,7 +39,7 @@ class World:
         "description": name,
         "uuid": str(uuid.uuid4()),
         "version": [0, 0, 1],
-        "min_engine_version": [1, 13, 0]
+        "min_engine_version": [1, 14, 0]
       },
       "modules": [
         {
