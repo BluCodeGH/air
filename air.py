@@ -105,7 +105,7 @@ class SourceHandler(PatternMatchingEventHandler):
   @staticmethod
   def on_moved(event):
     SourceHandler.on_deleted(event)
-    event.src_path = event.dest_path
+    event._src_path = event._dest_path
     SourceHandler.on_modified(event)
 
 class DestHandler(PatternMatchingEventHandler):
@@ -138,7 +138,7 @@ class DestHandler(PatternMatchingEventHandler):
   @staticmethod
   def on_moved(event):
     DestHandler.on_deleted(event)
-    event.src_path = event.dest_path
+    event._src_path = event._dest_path
     DestHandler.on_modified(event)
 
 observer = Observer()
