@@ -23,7 +23,7 @@ def entity(world, name):
           "overlay_color": "#000000"
         },
         "render_controllers": [
-          "controller.render." + name
+          "controller.render.generic"
         ]
       }
     }
@@ -32,24 +32,6 @@ def entity(world, name):
   (world.devPath / "rp" / "entity" / "{}.mcj".format(name)).write_text(enc(rp_entity))
   (world.devPath / "rp" / "textures" / "entity").mkdir(exist_ok=True, parents=True)
   (world.devPath / "rp" / "models" / "entity").mkdir(exist_ok=True, parents=True)
-  render_controller = {
-    "format_version": "1.8.0",
-    "render_controllers": {
-      "controller.render.{}".format(name): {
-        "materials": [
-          {
-            "*": "Material.default"
-          }
-        ],
-        "geometry": "Geometry.default",
-        "textures": [
-          "Texture.default"
-        ]
-      }
-    }
-  }
-  (world.devPath / "rp" / "render_controllers").mkdir(exist_ok=True)
-  (world.devPath / "rp" / "render_controllers" / "{}.mcj".format(name)).write_text(enc(render_controller))
   bp_entity = {
     "identifier": "{}:{}".format(namespace, name),
     "components": {
