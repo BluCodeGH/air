@@ -151,6 +151,10 @@ try:
     cmd = input("Ready: ")
     if cmd.strip() == "":
       continue
+    if cmd.strip() == "u":
+      for pack in world.devPath.glob("*"):
+        converter.unison(pack, world.file(pack)[2])
+      continue
     try:
       plugin.parse(world, cmd)
     except Exception as e:
